@@ -3,7 +3,7 @@
  *
  * 2015 - tpruvot@github
  */
-
+ 
 #include <unistd.h>
 
 #include "miner.h"
