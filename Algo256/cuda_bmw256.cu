@@ -232,13 +232,12 @@ void bmw256_gpu_hash_32(uint32_t threads, uint32_t startNounce, uint64_t *g_hash
 		LOHI(message[4], message[5], __ldg(&g_hash[thread + 2 * threads]));
 
 		LOHI(message[6], message[7], __ldg(&g_hash[thread + 3 * threads]));
-	uint64_t test = __ldg(&g_hash[thread + 3 * threads]);
 		message[8]=0x80;
 		message[14]=0x100;
-//		Compression256(message);
-//		Compression256_2(message);
+		Compression256(message);
+		Compression256_2(message);
 
-		if (test <= pTarget[3])
+		if (((uint64_t*)message)[7] <= pTarget[3])
 		{
 			uint32_t tmp = atomicExch(&nonceVector[0], startNounce + thread);
 			if (tmp != 0)
