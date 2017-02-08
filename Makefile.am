@@ -33,7 +33,8 @@ ccminer_SOURCES	= elist.h miner.h compat.h \
 			  myriadgroestl.cpp cuda_myriadgroestl.cu \
 			  lyra2/Lyra2.c lyra2/Sponge.c \
 			  lyra2/lyra2RE.cu lyra2/cuda_lyra2.cu \
-		          lyra2/lyra2REv2.cu lyra2/cuda_lyra2v2.cu \
+		      lyra2/lyra2REv2.cu lyra2/cuda_lyra2v2.cu \
+			  lyra2/lyra2Z.cu lyra2/cuda_lyra2Z.cu \
 			  Algo256/cuda_bmw256.cu Algo256/cuda_cubehash256.cu \
 			  Algo256/cuda_blake256.cu Algo256/cuda_groestl256.cu Algo256/cuda_keccak256.cu Algo256/cuda_skein256.cu \
 			  Algo256/blake256.cu Algo256/decred.cu Algo256/vanilla.cu Algo256/keccak256.cu \
@@ -87,6 +88,7 @@ ccminer_CPPFLAGS = @LIBCURL_CPPFLAGS@ @OPENMP_CFLAGS@ $(CPPFLAGS) $(PTHREAD_FLAG
 nvcc_ARCH  = -gencode=arch=compute_50,code=\"sm_50,compute_50\"
 
 nvcc_ARCH += -gencode=arch=compute_52,code=\"sm_52,compute_52\"
+nvcc_ARCH += -gencode=arch=compute_60,code=\"sm_60,compute_60\"
 #nvcc_ARCH += -gencode=arch=compute_35,code=\"sm_35,compute_35\"
 #nvcc_ARCH += -gencode=arch=compute_30,code=\"sm_30,compute_30\"
 #nvcc_ARCH += -gencode=arch=compute_20,code=\"sm_21,compute_20\"

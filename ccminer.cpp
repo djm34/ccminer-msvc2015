@@ -233,6 +233,7 @@ Options:\n\
 			luffa       Joincoin\n\
 			lyra2       CryptoCoin\n\
 			lyra2v2     VertCoin\n\
+			lyra2Z      ZCoin\n\
 			mjollnir    Mjollnircoin\n\
 			myr-gr      Myriad-Groestl\n\
 			neoscrypt   FeatherCoin, Phoenix, UFO...\n\
@@ -1560,6 +1561,7 @@ static bool stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 		case ALGO_FUGUE256:
 		case ALGO_GROESTL:
 		case ALGO_LBRY:
+		case ALGO_LYRA2Z:
 		case ALGO_LYRA2v2:
 			work_set_target(work, sctx->job.diff / (256.0 * opt_difficulty));
 			break;
@@ -2030,6 +2032,7 @@ static void *miner_thread(void *userdata)
 				minmax = 0x300000;
 				break;
 			case ALGO_LYRA2:
+			case ALGO_LYRA2Z:
 			case ALGO_NEOSCRYPT:
 			case ALGO_SIB:
 			case ALGO_SCRYPT:
@@ -2147,6 +2150,9 @@ static void *miner_thread(void *userdata)
 			break;
 		case ALGO_LYRA2:
 			rc = scanhash_lyra2(thr_id, &work, max_nonce, &hashes_done);
+			break;
+		case ALGO_LYRA2Z:
+			rc = scanhash_lyra2Z(thr_id, &work, max_nonce, &hashes_done);
 			break;
 		case ALGO_LYRA2v2:
 			rc = scanhash_lyra2v2(thr_id, &work, max_nonce, &hashes_done);
@@ -3460,16 +3466,18 @@ int main(int argc, char *argv[])
 	long flags;
 	int i;
 
-	printf("*** ccminer " PACKAGE_VERSION " for nVidia GPUs by tpruvot@github ***\n");
+	printf("*** ccminer " PACKAGE_VERSION " for nVidia GPUs by djm34 ***\n");
 #ifdef _MSC_VER
 	printf("    Built with VC++ %d and nVidia CUDA SDK %d.%d\n\n", msver(),
 #else
 	printf("    Built with the nVidia CUDA Toolkit %d.%d\n\n",
 #endif
 		CUDART_VERSION/1000, (CUDART_VERSION % 1000)/10);
-	printf("  Originally based on Christian Buchner and Christian H. project\n");
-	printf("  Include some algos from alexis78, djm34, sp, tsiv and klausT.\n\n");
-	printf("BTC donation address: 1AJdfCpLWPNoAMDfHF1wD5y8VgKSSTHxPo (tpruvot)\n\n");
+	printf("  Originally based on Christian Buchner and Christian H. project based on tpruvot 1.8.4 release\n");
+	printf("  Include algos from alexis78, djm34, sp, tsiv and klausT.\n");
+	printf("  *** News (02/08/2017): lyra2Z algo for ZCoin \n\n");
+	printf("BTC donation address: 1NENYmxwZGHsKFmyjTc5WferTn5VTFb7Ze (djm34)\n");
+	printf("ZCoin donation address: aChWVb8CpgajadpLmiwDZvZaKizQgHxfh5 (djm34)\n\n");
 
 	rpc_user = strdup("");
 	rpc_pass = strdup("");

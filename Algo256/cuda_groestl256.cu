@@ -220,7 +220,7 @@ void groestl256_gpu_hash_32(uint32_t threads, uint32_t startNounce, uint64_t *ou
 		state[15] ^= 0x10000;
 
 		// Perm
-
+/*
 #if USE_SHARED
 		groestl256_perm_P(thread, state, mixtabs);
 		state[15] ^= 0x10000;
@@ -241,9 +241,9 @@ void groestl256_gpu_hash_32(uint32_t threads, uint32_t startNounce, uint64_t *ou
 #endif
 		state[14] ^= message[14];
 		state[15] ^= message[15];
-
+*/
 		uint32_t nonce = startNounce + thread;
-		if (state[15] <= pTarget[7]) {
+		if (((uint64_t*)message)[3] <= ((uint64_t*)pTarget)[3]) {
 			atomicMin(&resNonces[1], resNonces[0]);
 			atomicMin(&resNonces[0], nonce);
 		}

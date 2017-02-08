@@ -92,7 +92,7 @@ static uint32_t *h_resNonce[MAX_GPUS];
 	v[ c]+= v[ d];                          v[c1]+= v[d1]; \
 	v[ b] = ROTR32(v[ b] ^ v[ c], 7);       v[b1] = ROTR32(v[b1] ^ v[c1], 7); \
 }
-
+ 
 #define pxorx1GS2(a,b,c,d, a1,b1,c1,d1) { \
 	v[ a]+= c_xors[i++] + v[ b];            v[a1]+= (c_xors[i++]^nonce) + v[b1]; \
 	v[ d] = ROL16(v[ d] ^ v[ a]);           v[d1] = ROL16(v[d1] ^ v[a1]); \

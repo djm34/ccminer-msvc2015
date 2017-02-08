@@ -12,7 +12,7 @@
 
 #ifdef WIN32
 # define  _WINSOCK_DEPRECATED_NO_WARNINGS
-# include <winsock2.h>
+//# include <winsock2.h>
 #endif
 
 #include <stdio.h>

@@ -58,25 +58,29 @@ static const uint32_t  c_u256[16] = {
 	0x3F84D5B5, 0xB5470917
 };
 
+
+
 #define GS2(a,b,c,d,x) { \
 	const uint32_t idx1 = sigma[r][x]; \
-	const uint32_t idx2 = sigma[r][x+1]; \
+	const uint32_t idx2 = sigma[r][x + 1]; \
 	v[a] += (m[idx1] ^ u256[idx2]) + v[b]; \
-	v[d] = SPH_ROTL32(v[d] ^ v[a], 16); \
+	v[d] = ROTR32(v[d] ^ v[a], 16); \
 	v[c] += v[d]; \
-	v[b] = SPH_ROTR32(v[b] ^ v[c], 12); \
+	v[b] = ROTR32(v[b] ^ v[c], 12); \
 \
 	v[a] += (m[idx2] ^ u256[idx1]) + v[b]; \
-	v[d] = SPH_ROTR32(v[d] ^ v[a], 8); \
+	v[d] = ROTR32(v[d] ^ v[a], 8); \
 	v[c] += v[d]; \
-	v[b] = SPH_ROTR32(v[b] ^ v[c], 7); \
-}
+	v[b] = ROTR32(v[b] ^ v[c], 7); \
+	}
+
+
 
 //#define ROTL32(x, n) ((x) << (n)) | ((x) >> (32 - (n)))
 //#define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
 #define hostGS(a,b,c,d,x) { \
-	const uint32_t idx1 = c_sigma[r][x]; \
-	const uint32_t idx2 = c_sigma[r][x+1]; \
+	const uint8_t idx1 = c_sigma[r][x]; \
+	const uint8_t idx2 = c_sigma[r][x + 1]; \
 	v[a] += (m[idx1] ^ c_u256[idx2]) + v[b]; \
 	v[d] = ROTR32(v[d] ^ v[a], 16); \
 	v[c] += v[d]; \
@@ -87,6 +91,7 @@ static const uint32_t  c_u256[16] = {
 	v[c] += v[d]; \
 	v[b] = ROTR32(v[b] ^ v[c], 7); \
 	}
+
 
 /* Second part (64-80) msg never change, store it */
 __device__ __constant__ static const uint32_t  c_Padding[16] = {

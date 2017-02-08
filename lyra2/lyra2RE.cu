@@ -65,7 +65,7 @@ extern "C" void lyra2re_hash(void *state, const void *input)
 	sph_keccak256(&ctx_keccak, hashA, 32);
 	sph_keccak256_close(&ctx_keccak, hashB);
 
-	LYRA2(hashA, 32, hashB, 32, hashB, 32, 1, 8, 8);
+	LYRA2_old(hashA, 32, hashB, 32, hashB, 32, 1, 8, 8);
 
 	sph_skein256_init(&ctx_skein);
 	sph_skein256(&ctx_skein, hashA, 32);

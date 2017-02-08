@@ -177,12 +177,32 @@ static void shift256R4(uint32_t* ret, const uint8 &vec4, const uint32_t shift2)
 
 #define BLAKE_G(idx0, idx1, a, b, c, d, key) { \
 	idx = BLAKE2S_SIGMA[idx0][idx1]; a += key[idx]; \
-	a += b; d = rotateL(d^a, 16); \
+	a += b; d = rotate(d ^ a,16); \
+	c += d; b = rotateR(b ^ c, 12); \
+	idx = BLAKE2S_SIGMA[idx0][idx1 + 1]; a += key[idx]; \
+  a += b; d = rotateR(d ^ a,8); \
+	c += d; b = rotateR(b ^ c, 7); \
+}
+
+#if __CUDA_ARCH__ >= 500
+#define BLAKE_G(idx0, idx1, a, b, c, d, key) { \
+	idx = BLAKE2S_SIGMA[idx0][idx1]; a += key[idx]; \
+	a += b; d = __byte_perm(d^a,0, 0x1032); \
 	c += d; b = rotateR(b^c, 12); \
 	idx = BLAKE2S_SIGMA[idx0][idx1+1]; a += key[idx]; \
-	a += b; d = rotateR(d^a, 8); \
+	a += b; d = __byte_perm(d^a,0, 0x0321); \
 	c += d; b = rotateR(b^c, 7); \
-}
+} 
+#else 
+#define BLAKE_G(idx0, idx1, a, b, c, d, key) { \
+	idx = BLAKE2S_SIGMA[idx0][idx1]; a += key[idx]; \
+	a += b; d = rotateL(d ^ a,16); \
+	c += d; b = rotateR(b ^ c, 12); \
+	idx = BLAKE2S_SIGMA[idx0][idx1 + 1]; a += key[idx]; \
+  a += b; d = rotateR(d ^ a,8); \
+	c += d; b = rotateR(b ^ c, 7); \
+} 
+#endif
 
 #define BLAKE_G_PRE(idx0, idx1, a, b, c, d, key) { \
 	a += key[idx0]; \
@@ -390,12 +410,12 @@ void Blake2S(uint32_t *out, const uint32_t* const __restrict__  inout, const  ui
 
 #define BLAKE_G(idx0, idx1, a, b, c, d, key) { \
 	idx = BLAKE2S_SIGMA[idx0][idx1]; a += key[idx]; \
-	a += b; d = __byte_perm(d^a, 0, 0x1032); \
+	a += b; d = __byte_perm(d^a,0, 0x1032); \
 	c += d; b = rotateR(b^c, 12); \
 	idx = BLAKE2S_SIGMA[idx0][idx1+1]; a += key[idx]; \
-	a += b; d = __byte_perm(d^a, 0, 0x0321); \
+	a += b; d = __byte_perm(d^a,0, 0x0321); \
 	c += d; b = rotateR(b^c, 7); \
-}
+} 
 
 #define BLAKE(a, b, c, d, key1,key2) { \
 	a += key1; \
@@ -1256,14 +1276,17 @@ uint32_t fastkdf32_v3(uint32_t thread, const uint32_t nonce, uint32_t* const sal
 #endif
 
 
+
 #define BLAKE_Ghost(idx0, idx1, a, b, c, d, key) { \
-	idx = BLAKE2S_SIGMA_host[idx0][idx1]; a += key[idx]; \
-	a += b; d = ROTR32(d^a,16); \
-	c += d; b = ROTR32(b^c, 12); \
-	idx = BLAKE2S_SIGMA_host[idx0][idx1+1]; a += key[idx]; \
-	a += b; d = ROTR32(d^a,8); \
-	c += d; b = ROTR32(b^c, 7); \
-}
+	idx = BLAKE2S_SIGMA_host[idx0][idx1]; \
+	a += b + key[idx]; \
+	d = ROTR32(d ^ a, 16); \
+	c += d; b = ROTR32(b ^ c, 12); \
+	idx = BLAKE2S_SIGMA_host[idx0][idx1 + 1]; \
+	a += b + key[idx]; \
+	d = ROTR32(d ^ a, 8); \
+	c += d; b = ROTR32(b ^ c, 7); \
+} 
 
 static void Blake2Shost(uint32_t * inout, const uint32_t * inkey)
 {

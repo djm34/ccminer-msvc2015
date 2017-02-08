@@ -51,9 +51,9 @@ class uint32x4_t
 {
 public:
 #if WIN32
-	void * operator new(size_t size) _THROW1(_STD bad_alloc) { void *p; if ((p = _aligned_malloc(size, 16)) == 0) { static const std::bad_alloc nomem; _RAISE(nomem); } return (p); }
+	void * operator new(size_t size)  throw(std::bad_alloc) { void *p; if ((p = _aligned_malloc(size, 16)) == 0) { static const std::bad_alloc nomem; _RAISE(nomem); } return (p); }
 	void operator delete(void *p) { _aligned_free(p); }
-	void * operator new[](size_t size) _THROW1(_STD bad_alloc) { void *p; if ((p = _aligned_malloc(size, 16)) == 0) { static const std::bad_alloc nomem; _RAISE(nomem); } return (p); }
+	void * operator new[](size_t size)  throw(std::bad_alloc) { void *p; if ((p = _aligned_malloc(size, 16)) == 0) { static const std::bad_alloc nomem; _RAISE(nomem); } return (p); }
 	void operator delete[](void *p) { _aligned_free(p); }
 #else
 	void * operator new(size_t size) throw(std::bad_alloc) { void *p; if (posix_memalign(&p, 16, size) < 0) { static const std::bad_alloc nomem; throw nomem; } return (p); }

@@ -482,6 +482,12 @@
     <ClInclude Include="sia\sia-rpc.h">
       <Filter>Source Files\sia</Filter>
     </ClInclude>
+    <ClInclude Include="lyra2\cuda_lyra2Z_sm2.cuh">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </ClInclude>
+    <ClInclude Include="lyra2\cuda_lyra2Z_sm5.cuh">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda.cpp">
@@ -760,6 +766,12 @@
     <CudaCompile Include="sia\sia.cu">
       <Filter>Source Files\sia</Filter>
     </CudaCompile>
+    <CudaCompile Include="lyra2\cuda_lyra2Z.cu">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </CudaCompile>
+    <CudaCompile Include="lyra2\lyra2Z.cu">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\ccminer.ico">
@@ -777,4 +789,3 @@
     </Text>
   </ItemGroup>
 </Project>
-
