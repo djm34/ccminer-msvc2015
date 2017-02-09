@@ -23,7 +23,7 @@ static uint32_t *d_GNonces[16];
 #if !defined(__CUDA_ARCH__) ||  __CUDA_ARCH__ > 500
 
 #include "cuda_lyra2_vectors.h"
-
+//#include "cuda_vector_uint2x4.h"
 #ifdef __INTELLISENSE__
 /* just for vstudio code colors */
 __device__ uint32_t __shfl(uint32_t a, uint32_t b, uint32_t c);
@@ -639,7 +639,7 @@ void lyra2Z_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *g_hash,
 }
 #else
 #if __CUDA_ARCH__ < 500
-
+//__constant__ uint32_t pTarget[8];
 /* for unsupported SM arch */
 __device__ void* DMatrix;
 #endif

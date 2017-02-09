@@ -2,8 +2,8 @@
 
 #ifdef __INTELLISENSE__
 /* just for vstudio code colors */
-#undef __CUDA_ARCH__
-#define __CUDA_ARCH__ 500
+//#undef __CUDA_ARCH__
+//#define __CUDA_ARCH__ 500
 #endif
 
 #include "cuda_helper.h"
@@ -25,7 +25,7 @@ __constant__ static uint2 blake2b_IV_sm2[8] = {
 #endif
 
 #if __CUDA_ARCH__ >= 200 && __CUDA_ARCH__ <= 350
-
+__constant__ uint32_t pTarget[8];
 #define reduceDuplexRow(rowIn, rowInOut, rowOut) { \
 	for (int i = 0; i < 8; i++) { \
 		for (int j = 0; j < 12; j++) \
@@ -131,14 +131,14 @@ void reduceDuplexRowSetup(const int rowIn, const int rowInOut, const int rowOut,
 }
 
 __global__ __launch_bounds__(TPB30, 1)
-void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_hash)
+void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_hash, uint32_t *resNonces)
 {
 	uint32_t thread = (blockDim.x * blockIdx.x + threadIdx.x);
-	const uint2x4 Mask[2] = {
-		0x00000020UL, 0x00000000UL, 0x00000020UL, 0x00000000UL,
-		0x00000020UL, 0x00000000UL, 0x00000008UL, 0x00000000UL,
-		0x00000008UL, 0x00000000UL, 0x00000008UL, 0x00000000UL,
-		0x00000080UL, 0x00000000UL, 0x00000000UL, 0x01000000UL
+	const uint2 Mask[8] = {
+		{0x00000020, 0x00000000}, {0x00000020, 0x00000000},
+		{0x00000020, 0x00000000}, {0x00000008, 0x00000000},
+		{0x00000008, 0x00000000}, {0x00000008, 0x00000000},
+		{0x00000080, 0x00000000}, {0x00000000, 0x01000000}
 	};
 	if (thread < threads)
 	{
@@ -164,9 +164,10 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 		for (int i = 0; i<12; i++) {
 			round_lyra(state);
 		} 
-
-		((uint2x4*)state)[0] ^= Mask[0];
-		((uint2x4*)state)[1] ^= Mask[1];
+	
+		for (int i=0;i<8;i++) 
+			state[i] ^= Mask[i];
+		
 
 		for (int i = 0; i<12; i++) {
 			round_lyra(state);
@@ -226,7 +227,7 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 		rowa = state[0].x & 7;
 		reduceDuplexRow(2, rowa, 5);
 
-		uint32_t rowa; // = WarpShuffle(state[0].x, 0, 4) & 7;
+		
 		uint32_t prev = 7;
 		uint32_t iterator = 0;
 		for (uint32_t i = 0; i<8; i++) {
@@ -283,12 +284,11 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 
 
 		absorbblock(rowa);
-
-		#pragma unroll
-		for (int i = 0; i<4; i++) {
-			g_hash[threads*i + thread] = devectorize(state[i]);
+		uint32_t nonce = startNounce + thread;
+		if (((uint64_t*)state)[3] <= ((uint64_t*)pTarget)[3]) {
+			atomicMin(&resNonces[1], resNonces[0]);
+			atomicMin(&resNonces[0], nonce);
 		}
-
 	} //thread
 }
 
