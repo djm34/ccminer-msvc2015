@@ -17,6 +17,8 @@
 #define Ncol 8
 #define memshift 3
 
+__constant__ uint32_t pTarget[8];
+
 __device__ uint2 *DMatrix;
 
 __device__ __forceinline__ uint2 LD4S(const int index)
