@@ -17,10 +17,6 @@
 /* just for vstudio code colors */
 #define __CUDA_ARCH__ 520
 #endif
-static uint32_t *h_GNonces[16]; // this need to get fixed as the rest of that routine 
-static uint32_t *d_GNonces[16];
-
-__constant__ uint32_t pTarget[8];
 
 
 #if !defined(__CUDA_ARCH__) ||  __CUDA_ARCH__ > 500
@@ -37,6 +33,10 @@ __device__ uint32_t __shfl(uint32_t a, uint32_t b, uint32_t c);
 #define memshift 3
 
 #define BUF_COUNT 0
+static uint32_t *h_GNonces[16]; 
+static uint32_t *d_GNonces[16];
+
+__constant__ uint32_t pTarget[8];
 
 __device__ uint2 *DMatrix;
 
@@ -646,7 +646,7 @@ __device__ void* DMatrix;
 #endif
 __global__ void lyra2_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *g_hash) {}
 __global__ void lyra2_gpu_hash_32_2(uint32_t threads, uint32_t startNounce, uint64_t *g_hash) {}
-__global__ void lyra2_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *g_hash) {}
+__global__ void lyra2_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *g_hash, uint32_t *resNonces) {}
 #endif
 
 __host__
