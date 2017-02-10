@@ -10,7 +10,7 @@
 
 #define TPB50 32
 
-#if __CUDA_ARCH__ == 500
+#if __CUDA_ARCH__ == 500 || __CUDA_ARCH__ == 350
 #include "cuda_lyra2_vectors.h"
 
 #define Nrow 8

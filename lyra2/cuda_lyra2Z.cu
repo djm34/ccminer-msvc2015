@@ -20,6 +20,8 @@
 static uint32_t *h_GNonces[16]; // this need to get fixed as the rest of that routine
 static uint32_t *d_GNonces[16];
 
+
+
 #if !defined(__CUDA_ARCH__) ||  __CUDA_ARCH__ > 500
 
 #include "cuda_lyra2_vectors.h"
@@ -638,7 +640,7 @@ void lyra2Z_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *g_hash,
 	} //thread
 }
 #else
-#if __CUDA_ARCH__ < 500
+#if __CUDA_ARCH__ < 350
 //__constant__ uint32_t pTarget[8];
 /* for unsupported SM arch */
 __device__ void* DMatrix;
@@ -658,7 +660,15 @@ void lyra2Z_cpu_init(int thr_id, uint32_t threads, uint64_t *d_matrix)
 	cudaMallocHost(&h_GNonces[thr_id], 2 * sizeof(uint32_t));
 }
 
+__host__
+void lyra2Z_cpu_init_sm2(int thr_id, uint32_t threads)
+{
 
+	// just assign the device pointer allocated in main loop
+	cudaMalloc(&d_GNonces[thr_id], 2 * sizeof(uint32_t));
+	cudaMallocHost(&h_GNonces[thr_id], 2 * sizeof(uint32_t));
+}
+  
 __host__
 uint32_t lyra2Z_getSecNonce(int thr_id, int num)
 {
@@ -708,7 +718,7 @@ uint32_t lyra2Z_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, 
 
 		lyra2Z_gpu_hash_32_3 <<< grid2, block2 >>> (threads, startNounce, (uint2*)d_hash, d_GNonces[thr_id]);
 	}
-	else if (device_sm[dev_id] == 500)
+	else if (device_sm[dev_id] == 500 || device_sm[dev_id] == 350)
 	{
 		size_t shared_mem = 0;
 

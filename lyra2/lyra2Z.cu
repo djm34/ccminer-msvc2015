@@ -23,6 +23,7 @@ extern void skein256_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNon
 extern void skein256_cpu_init(int thr_id, uint32_t threads);
 
 extern void lyra2Z_cpu_init(int thr_id, uint32_t threads, uint64_t *d_matrix);
+extern void lyra2Z_cpu_init_sm2(int thr_id, uint32_t threads);
 extern uint32_t lyra2Z_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNonce, uint64_t *d_outputHash, bool gtx750ti);
 
 extern void lyra2Z_setTarget(const void *ptarget);
@@ -95,12 +96,15 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 
 		blake256_cpu_init(thr_id, throughput);
 
-		if (device_sm[dev_id] >= 500)
+		if (device_sm[dev_id] >= 350)
 		{
 			size_t matrix_sz = device_sm[dev_id] > 500 ? sizeof(uint64_t) * 4 * 4 : sizeof(uint64_t) * 8 * 8 * 3 * 4;
 			CUDA_SAFE_CALL(cudaMalloc(&d_matrix[thr_id], matrix_sz * throughput));
 			lyra2Z_cpu_init(thr_id, throughput, d_matrix[thr_id]);
 		}
+		else 
+			lyra2Z_cpu_init_sm2(thr_id, throughput);
+ 
 
 		CUDA_SAFE_CALL(cudaMalloc(&d_hash[thr_id], (size_t)32 * throughput));
 
@@ -128,11 +132,12 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 		{
 			uint32_t _ALIGN(64) vhash64[8];
 
-			be32enc(&endiandata[19], foundNonce);
-			lyra2Z_hash(vhash64, endiandata);
+			be32enc(&endiandata[19], foundNonce); 
+			lyra2Z_hash(vhash64, endiandata);  
 
 			if (vhash64[7] <= ptarget[7] && fulltest(vhash64, ptarget)) {
 				int res = 1;
+			
 				uint32_t secNonce = lyra2Z_getSecNonce(thr_id, 1);
 				work_set_target_ratio(work, vhash64);
 				if (secNonce != UINT32_MAX)
@@ -148,6 +153,7 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 						res++;
 					}
 				}
+			
 				pdata[19] = foundNonce;
 				return res;
 			} else {
