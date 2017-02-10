@@ -11,7 +11,7 @@
 #define TPB30 160
 #define TPB20 160
 
-#if (__CUDA_ARCH__ >= 200 && __CUDA_ARCH__ <= 350) || !defined(__CUDA_ARCH__)
+#if (__CUDA_ARCH__ >= 200 && __CUDA_ARCH__ < 350) 
 __constant__ static uint2 blake2b_IV_sm2[8] = {
 	{ 0xf3bcc908, 0x6a09e667 },
 	{ 0x84caa73b, 0xbb67ae85 },
@@ -24,7 +24,7 @@ __constant__ static uint2 blake2b_IV_sm2[8] = {
 };
 #endif
 
-#if __CUDA_ARCH__ >= 200 && __CUDA_ARCH__ <= 350
+#if __CUDA_ARCH__ >= 200 && __CUDA_ARCH__ < 350
 __constant__ uint32_t pTarget[8];
 #define reduceDuplexRow(rowIn, rowInOut, rowOut) { \
 	for (int i = 0; i < 8; i++) { \
@@ -210,24 +210,6 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 		reduceDuplexRowSetup(6, 1, 7, state, Matrix);
 
 		uint32_t rowa;
-		rowa = state[0].x & 7;
-		reduceDuplexRow(7, rowa, 0);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(0, rowa, 3);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(3, rowa, 6);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(6, rowa, 1);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(1, rowa, 4);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(4, rowa, 7);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(7, rowa, 2);
-		rowa = state[0].x & 7;
-		reduceDuplexRow(2, rowa, 5);
-
-		
 		uint32_t prev = 7;
 		uint32_t iterator = 0;
 		for (uint32_t i = 0; i<8; i++) {
@@ -256,6 +238,7 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 			iterator = (iterator - 1) & 7;
 		}
 
+
 		for (uint32_t i = 0; i<8; i++) {
 			rowa = state[0].x & 7;
 			reduceDuplexRow(prev, rowa, iterator);
@@ -268,6 +251,7 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 			prev = iterator;
 			iterator = (iterator - 1) & 7;
 		}
+
 		for (uint32_t i = 0; i<8; i++) {
 			rowa = state[0].x & 7;
 			reduceDuplexRow(prev, rowa, iterator);
@@ -295,4 +279,5 @@ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_
 #else
 /* if __CUDA_ARCH__ < 200 .. host */
 __global__ void lyra2Z_gpu_hash_32_sm2(uint32_t threads, uint32_t startNounce, uint64_t *g_hash, uint32_t *resNonces) {}
+
 #endif

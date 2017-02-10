@@ -2,13 +2,27 @@
 
 #ifdef __INTELLISENSE__
 /* just for vstudio code colors */
-#undef __CUDA_ARCH__
-#define __CUDA_ARCH__ 500
 #endif
 
 #include "cuda_helper.h"
 
 #define TPB50 32
+__constant__ uint32_t pTarget[8];
+static __device__ __forceinline__
+void Gfunc(uint2 & a, uint2 &b, uint2 &c, uint2 &d)
+{
+#if __CUDA_ARCH__ > 500 
+	a += b; uint2 tmp = d; d.y = a.x ^ tmp.x; d.x = a.y ^ tmp.y;
+	c += d; b ^= c; b = ROR24(b);
+	a += b; d ^= a; d = ROR16(d);
+	c += d; b ^= c; b = ROR2(b, 63);
+#else
+	a += b; d ^= a; d = SWAPUINT2(d);
+	c += d; b ^= c; b = ROR2(b, 24);
+	a += b; d ^= a; d = ROR2(d, 16);
+	c += d; b ^= c; b = ROR2(b, 63);
+#endif
+}
 
 #if __CUDA_ARCH__ == 500 || __CUDA_ARCH__ == 350
 #include "cuda_lyra2_vectors.h"
@@ -17,7 +31,7 @@
 #define Ncol 8
 #define memshift 3
 
-__constant__ uint32_t pTarget[8];
+
 
 __device__ uint2 *DMatrix;
 
@@ -123,16 +137,7 @@ __device__ __forceinline__ void WarpShuffle3(uint2 &a1, uint2 &a2, uint2 &a3, ui
 
 #endif
 
-#if __CUDA_ARCH__ > 300
-static __device__ __forceinline__
-void Gfunc(uint2 &a, uint2 &b, uint2 &c, uint2 &d)
-{
-	a += b; d ^= a; d = SWAPUINT2(d);
-	c += d; b ^= c; b = ROR24(b); //ROR2(b, 24);
-	a += b; d ^= a; d = ROR16(d);
-	c += d; b ^= c; b = ROR2(b, 63);
-}
-#endif
+
 
 __device__ __forceinline__ void round_lyra(uint2 s[4])
 {
