@@ -640,6 +640,11 @@ void lyra2Z_gpu_hash_32_3(uint32_t threads, uint32_t startNounce, uint2 *g_hash,
 	} //thread
 }
 #else
+#if __CUDA_ARCH == 350
+__constant__ uint32_t pTarget[8];
+__device__ void* DMatrix;
+#endif
+
 #if __CUDA_ARCH__ < 350
 //__constant__ uint32_t pTarget[8];
 /* for unsupported SM arch */
