@@ -199,7 +199,7 @@ __device__ __forceinline__ void WarpShuffle3(uint2 &a1, uint2 &a2, uint2 &a3, ui
 
 #endif
 
-#if __CUDA_ARCH__ > 500 || !defined(__CUDA_ARCH)
+#if __CUDA_ARCH__ > 500 || !defined(__CUDA_ARCH__)
 static __device__ __forceinline__
 void Gfunc(uint2 &a, uint2 &b, uint2 &c, uint2 &d)
 {
