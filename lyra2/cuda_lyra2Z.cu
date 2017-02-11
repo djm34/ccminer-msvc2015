@@ -709,16 +709,7 @@ void reduceDuplexRowt_8_v2(const int rowIn, const int rowOut, const int rowInOut
 }
 
 
-__constant__ uint2x4 blake2b_IV[2] = {
-	0xf3bcc908lu, 0x6a09e667lu,
-	0x84caa73blu, 0xbb67ae85lu,
-	0xfe94f82blu, 0x3c6ef372lu,
-	0x5f1d36f1lu, 0xa54ff53alu,
-	0xade682d1lu, 0x510e527flu,
-	0x2b3e6c1flu, 0x9b05688clu,
-	0xfb41bd6blu, 0x1f83d9ablu,
-	0x137e2179lu, 0x5be0cd19lu
-};
+
 
 __global__ __launch_bounds__(64, 1)
 void lyra2Z_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *g_hash)
@@ -730,6 +721,16 @@ void lyra2Z_gpu_hash_32_1(uint32_t threads, uint32_t startNounce, uint2 *g_hash)
 		0x00000008UL, 0x00000000UL, 0x00000008UL, 0x00000000UL,
 		0x00000080UL, 0x00000000UL, 0x00000000UL, 0x01000000UL
 	};
+	const uint2x4 blake2b_IV[2] = {
+	0xf3bcc908lu, 0x6a09e667lu,
+	0x84caa73blu, 0xbb67ae85lu,
+	0xfe94f82blu, 0x3c6ef372lu,
+	0x5f1d36f1lu, 0xa54ff53alu,
+	0xade682d1lu, 0x510e527flu,
+	0x2b3e6c1flu, 0x9b05688clu,
+	0xfb41bd6blu, 0x1f83d9ablu,
+	0x137e2179lu, 0x5be0cd19lu
+    };
 	if (thread < threads)
 	{
 		uint2x4 state[4];
