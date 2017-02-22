@@ -24,6 +24,7 @@ enum sha_algos {
 	ALGO_LYRA2,
 	ALGO_LYRA2v2,
 	ALGO_LYRA2Z,
+	ALGO_M7,
 	ALGO_MJOLLNIR,		/* Hefty hash */
 	ALGO_MYR_GR,
 	ALGO_NEOSCRYPT,
@@ -76,6 +77,7 @@ static const char *algo_names[] = {
 	"lyra2",
 	"lyra2v2",
 	"lyra2Z",
+	"m7",
 	"mjollnir",
 	"myr-gr",
 	"neoscrypt",

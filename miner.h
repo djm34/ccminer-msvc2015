@@ -164,6 +164,18 @@ static inline void swab256(void *dest_p, const void *src_p)
 #include <sys/endian.h>
 #endif
 
+
+#if !HAVE_DECL_BE64DEC
+static inline uint64_t be64dec(const void *pp)
+{
+	const uint8_t *p = (uint8_t const *)pp;
+	return ((uint64_t)(p[7]) + ((uint64_t)(p[6]) << 8) +
+		((uint64_t)(p[5]) << 16) + ((uint64_t)(p[4]) << 24) +
+		((uint64_t)(p[3]) << 32) + ((uint64_t)(p[2]) << 40) +
+		((uint64_t)(p[1]) << 48) + ((uint64_t)(p[0]) << 56));
+}
+#endif
+
 #if !HAVE_DECL_BE32DEC
 static inline uint32_t be32dec(const void *pp)
 {
@@ -203,6 +215,22 @@ static inline void le32enc(void *pp, uint32_t x)
 	p[3] = (x >> 24) & 0xff;
 }
 #endif
+
+#if !HAVE_DECL_BE64ENC
+static inline void be64enc(void *pp, uint64_t x)
+{
+	uint8_t *p = (uint8_t *)pp;
+	p[7] = x & 0xff;
+	p[6] = (x >> 8) & 0xff;
+	p[5] = (x >> 16) & 0xff;
+	p[4] = (x >> 24) & 0xff;
+	p[3] = (x >> 32) & 0xff;
+	p[2] = (x >> 40) & 0xff;
+	p[1] = (x >> 48) & 0xff;
+	p[0] = (x >> 56) & 0xff;
+}
+#endif
+
 
 #if !HAVE_DECL_BE16DEC
 static inline uint16_t be16dec(const void *pp)
@@ -280,6 +308,7 @@ extern int scanhash_luffa(int thr_id, struct work* work, uint32_t max_nonce, uns
 extern int scanhash_lyra2(int thr_id, struct work* work, uint32_t max_nonce, unsigned long *hashes_done);
 extern int scanhash_lyra2v2(int thr_id,struct work* work, uint32_t max_nonce, unsigned long *hashes_done);
 extern int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce, unsigned long *hashes_done);
+extern int scanhash_m7(int thr_id, uint32_t *pdata,const uint32_t *ptarget, uint32_t max_nonce, unsigned long  *hashes_done);
 extern int scanhash_myriad(int thr_id, struct work* work, uint32_t max_nonce, unsigned long *hashes_done);
 extern int scanhash_neoscrypt(int thr_id, struct work *work, uint32_t max_nonce, unsigned long *hashes_done);
 extern int scanhash_nist5(int thr_id, struct work *work, uint32_t max_nonce, unsigned long *hashes_done);
@@ -497,7 +526,7 @@ extern double stratum_diff;
 //#define MAX_THREADS 32 todo
 extern char* device_name[MAX_GPUS];
 extern short device_map[MAX_GPUS];
-extern long  device_sm[MAX_GPUS];
+extern uint32_t  device_sm[MAX_GPUS];
 extern uint32_t gpus_intensity[MAX_GPUS];
 extern int opt_cudaschedule;
 
@@ -598,6 +627,13 @@ struct stratum_job {
 	unsigned char nreward[2];
 	uint32_t height;
 	double diff;
+
+	unsigned char m7prevblock[32];
+	unsigned char m7accroot[32];
+	unsigned char m7merkleroot[32];
+	unsigned char m7height[8];
+	unsigned char m7ntime[8];
+	unsigned char m7version[2];
 };
 
 struct stratum_ctx {
@@ -743,6 +779,7 @@ void stratum_disconnect(struct stratum_ctx *sctx);
 bool stratum_subscribe(struct stratum_ctx *sctx);
 bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *pass);
 bool stratum_handle_method(struct stratum_ctx *sctx, const char *s);
+bool stratum_handle_method_m7(struct stratum_ctx *sctx, const char *s);
 void stratum_free_job(struct stratum_ctx *sctx);
 
 void hashlog_remember_submit(struct work* work, uint32_t nonce);

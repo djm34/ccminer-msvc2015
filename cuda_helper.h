@@ -24,7 +24,7 @@
 #endif
 
 extern "C" short device_map[MAX_GPUS];
-extern "C"  long device_sm[MAX_GPUS];
+extern "C"  uint32_t device_sm[MAX_GPUS];
 
 extern int cuda_arch[MAX_GPUS];
 
