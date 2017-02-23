@@ -923,7 +923,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 		} else {
 			sprintf(s, "{\"method\": \"mining.submit\", \"params\": ["
 					"\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":%d}",
-					pool->user,(opt_algo==ALGO_M7)? work->job_id : work->job_id + 8, xnonce2str, ntimestr, noncestr, 10+idnonce);
+					pool->user, work->job_id + 8, xnonce2str, ntimestr, noncestr, 10+idnonce);
 		}
 		free(xnonce2str);
 		free(ntimestr);
@@ -1416,9 +1416,20 @@ err_out:
 
 static bool stratum_gen_work_m7(struct stratum_ctx *sctx, struct work *work)
 {
+
+	if (!sctx->job.job_id) {
+		// applog(LOG_WARNING, "stratum_gen_work: job not yet retrieved");
+		return false;
+	}
+
+
 	pthread_mutex_lock(&stratum_work_lock);
 
-	strcpy(work->job_id, sctx->job.job_id);
+//	strcpy(work->job_id, sctx->job.job_id);
+
+	snprintf(work->job_id, sizeof(work->job_id), "%07x %s",
+		be32dec(sctx->job.ntime) & 0xfffffff, sctx->job.job_id);
+
 	work->xnonce2_len = sctx->xnonce2_size;
 	memcpy(work->xnonce2, sctx->job.xnonce2, sctx->xnonce2_size);
 
