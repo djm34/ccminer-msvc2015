@@ -55,7 +55,7 @@ ccminer_SOURCES	= elist.h miner.h compat.h \
 			  sph/shabal.c sph/whirlpool.c sph/sha2big.c sph/haval.c \
 			  sph/ripemd.c sph/sph_sha2.c \
 			  sph/tiger.c \
-			  m7/cuda_haval512.cu m7/cuda_m7_sha256.cu m7/cuda_mul.cu m7/cuda_mul2.cu m7/cuda_tiger192.cu \
+			  m7/cuda_m7_sha256.cu m7/cuda_mul.cu m7/cuda_mul2.cu m7/cuda_tiger192.cu \
 			  m7/m7.cu m7/m7_keccak512.cu m7/m7_ripemd160.cu m7/m7_sha512.cu m7/m7_whirlpool512.cu \
 			  lbry/lbry.cu lbry/cuda_sha256_lbry.cu lbry/cuda_sha512_lbry.cu lbry/cuda_lbry_merged.cu \
 			  qubit/qubit.cu qubit/qubit_luffa512.cu qubit/deep.cu qubit/luffa.cu \
