@@ -2114,6 +2114,7 @@ static void *miner_thread(void *userdata)
 			case ALGO_DEEP:
 			case ALGO_HEAVY:
 			case ALGO_LYRA2v2:
+			case ALGO_LYRA2Z:
 			case ALGO_S3:
 			case ALGO_X11EVO:
 			case ALGO_X11:
@@ -2128,7 +2129,7 @@ static void *miner_thread(void *userdata)
 				minmax = 0x300000;
 				break;
 			case ALGO_LYRA2:
-			case ALGO_LYRA2Z:
+
 			case ALGO_NEOSCRYPT:
 			case ALGO_SIB:
 			case ALGO_SCRYPT:
