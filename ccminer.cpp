@@ -108,7 +108,7 @@ int opt_time_limit = -1;
 int opt_shares_limit = -1;
 time_t firstwork_time = 0;
 int opt_timeout = 300; // curl
-int opt_scantime = 10;
+int opt_scantime = 30;
 static json_t *opt_config;
 static const bool opt_time = true;
 volatile enum sha_algos opt_algo = ALGO_AUTO;
@@ -787,6 +787,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 	int idnonce = 0;
 
 	/* discard if a newer block was received */
+/*
 	stale_work = work->height && work->height < g_work.height;
 	if (have_stratum && !stale_work && opt_algo != ALGO_ZR5 && opt_algo != ALGO_SCRYPT_JANE) {
 		pthread_mutex_lock(&g_work_lock);
@@ -824,7 +825,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 			applog(LOG_WARNING, "stale work detected, discarding");
 		return true;
 	}
-
+*/
 	if (pool->type & POOL_STRATUM) {
 		uint32_t sent = 0;
 		uint32_t ntime, nonce;
