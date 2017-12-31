@@ -96,7 +96,7 @@ extern "C" int scanhash_lyra2h(int thr_id, struct work* work, uint32_t max_nonce
 		gpulog(LOG_INFO, thr_id, "Intensity set to %g, %u cuda threads", throughput2intensity(throughput), throughput);
 
 		blake256_cpu_init(thr_id, throughput);
-/*
+
 		if (device_sm[dev_id] >= 500)
 		{
 			size_t matrix_sz = device_sm[dev_id] > 500 ? sizeof(uint64_t) * 8 * 8: sizeof(uint64_t) * 16 * 16 * 3 * 4;
@@ -104,15 +104,15 @@ extern "C" int scanhash_lyra2h(int thr_id, struct work* work, uint32_t max_nonce
 			lyra2h_cpu_init(thr_id, throughput, d_matrix[thr_id]);
 		}
 		else  if (device_sm[dev_id] == 350 || device_sm[dev_id] == 370) {
-*/
+
 			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 			size_t matrix_sz = sizeof(uint64_t) * 16 * 16 * 16;
 			CUDA_SAFE_CALL(cudaMalloc(&d_matrix[thr_id], matrix_sz * throughput));
 			lyra2h_cpu_init_sm35(thr_id, throughput, d_matrix[thr_id]);
-/*
+
 		}
 			lyra2h_cpu_init_sm2(thr_id, throughput);
- */
+ 
 
 		CUDA_SAFE_CALL(cudaMalloc(&d_hash[thr_id], (size_t)32 * throughput));
 
