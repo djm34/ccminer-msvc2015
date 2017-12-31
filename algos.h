@@ -24,6 +24,7 @@ enum sha_algos {
 	ALGO_LYRA2,
 	ALGO_LYRA2v2,
 	ALGO_LYRA2Z,
+    ALGO_LYRA2H,
 	ALGO_M7,
 	ALGO_MJOLLNIR,		/* Hefty hash */
 	ALGO_MYR_GR,
@@ -77,6 +78,7 @@ static const char *algo_names[] = {
 	"lyra2",
 	"lyra2v2",
 	"lyra2Z",
+	"lyra2h",
 	"m7",
 	"mjollnir",
 	"myr-gr",
@@ -133,6 +135,8 @@ static inline int algo_to_int(char* arg)
 			i = ALGO_LYRA2;
 		else if (!strcasecmp("lyra2rev2", arg))
 			i = ALGO_LYRA2v2;
+		else if (!strcasecmp("lyra2H", arg))
+			i = ALGO_LYRA2H;
 		else if (!strcasecmp("thorsriddle", arg))
 			i = ALGO_VELTOR;
 		else if (!strcasecmp("whirl", arg))

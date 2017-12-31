@@ -183,7 +183,7 @@ int LYRA2(void *K, int64_t kLen, const void *pwd, int32_t pwdlen, const void *sa
 			rowa = state[0] & (unsigned int)(nRows-1);  //(USE THIS IF nRows IS A POWER OF 2)
 			//rowa = state[0] % nRows; //(USE THIS FOR THE "GENERIC" CASE)
 			//------------------------------------------------------------------------------------------
-
+//	printf("prev %d row %d step %d tau %d\n",prev,row,step,tau);
 			//Performs a reduced-round duplexing operation over M[row*] XOR M[prev], updating both M[row*] and M[row]
 			reducedDuplexRow(state, memMatrix[prev], memMatrix[rowa], memMatrix[row], nCols);
 
@@ -193,10 +193,12 @@ int LYRA2(void *K, int64_t kLen, const void *pwd, int32_t pwdlen, const void *sa
 			//updates row: goes to the next row to be computed
 			//------------------------------------------------------------------------------------------
 			row = (row + step) & (unsigned int)(nRows-1); //(USE THIS IF nRows IS A POWER OF 2)
+
 			//row = (row + step) % nRows; //(USE THIS FOR THE "GENERIC" CASE)
 			//------------------------------------------------------------------------------------------
 
 		} while (row != 0);
+
 	}
 
 	//============================ Wrap-up Phase ===============================//

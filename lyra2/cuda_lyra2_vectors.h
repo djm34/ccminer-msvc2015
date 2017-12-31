@@ -436,6 +436,9 @@ static __device__ __inline__ ulonglong4 __ldg4(const ulonglong4 *ptr)
 	return ret;
 }
 
+
+
+
 static __device__ __inline__ void ldg4(const ulonglong4 *ptr,ulonglong4 *ret)
 {
 	asm("ld.global.nc.v2.u64 {%0,%1}, [%2];"     : "=l"(ret[0].x), "=l"(ret[0].y) : __LDG_PTR(ptr));
@@ -453,6 +456,16 @@ static __device__ __inline__ uint28 __ldg4(const uint28 *ptr)
 	asm("ld.global.nc.v4.u32 {%0,%1,%2,%3}, [%4+16];" : "=r"(ret.z.x), "=r"(ret.z.y), "=r"(ret.w.x), "=r"(ret.w.y) : __LDG_PTR(ptr));
 	return ret;
 }
+
+static __device__ __inline__ uint28 __ldg28(const uint28 *ptr)
+{
+	uint28 ret;
+	asm("ld.global.nc.v4.u32 {%0,%1,%2,%3}, [%4];"  : "=r"(ret.x.x), "=r"(ret.x.y), "=r"(ret.y.x), "=r"(ret.y.y) : __LDG_PTR(ptr));
+	asm("ld.global.nc.v4.u32 {%0,%1,%2,%3}, [%4+16];" : "=r"(ret.z.x), "=r"(ret.z.y), "=r"(ret.w.x), "=r"(ret.w.y) : __LDG_PTR(ptr));
+	return ret;
+}
+
+
 
 static __device__ __inline__ uint48 __ldg4(const uint48 *ptr)
 {
@@ -590,6 +603,132 @@ static __device__ __forceinline__ ulonglong4 shuffle4(ulonglong4 var, int lane)
 #else
 	return var;
 #endif
+}
+
+
+static __device__ __forceinline__ uint28 shuffle_up4(const uint28 &var, int srcLane, int width)
+{
+	uint28 ret;
+	int c = ((32 - width) << 8);
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.x.x) : "r"(var.x.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.x.y) : "r"(var.x.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.y.x) : "r"(var.y.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.y.y) : "r"(var.y.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.z.x) : "r"(var.z.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.z.y) : "r"(var.z.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.w.x) : "r"(var.w.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.up.b32 %0, %1, %2, %3;" : "=r"(ret.w.y) : "r"(var.w.y), "r"(srcLane), "r"(c));
+	return ret;
+}
+
+static __device__ __forceinline__ uint28 shuffle_down4(const uint28 &var, int srcLane, int width)
+{
+	uint28 ret;
+	int c = ((32 - width) << 8) | 0x1f;
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.x.x) : "r"(var.x.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.x.y) : "r"(var.x.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.y.x) : "r"(var.y.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.y.y) : "r"(var.y.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.z.x) : "r"(var.z.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.z.y) : "r"(var.z.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.w.x) : "r"(var.w.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret.w.y) : "r"(var.w.y), "r"(srcLane), "r"(c));
+	return ret;
+}
+
+static __device__ __forceinline__ uint28 shuffle_xor4(const uint28 &var, int srcLane, int width)
+{
+	uint28 ret;
+	int c = ((32 - width) << 8) | 0x1f;
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.x.x) : "r"(var.x.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.x.y) : "r"(var.x.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.y.x) : "r"(var.y.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.y.y) : "r"(var.y.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.z.x) : "r"(var.z.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.z.y) : "r"(var.z.y), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.w.x) : "r"(var.w.x), "r"(srcLane), "r"(c));
+	asm volatile ("shfl.bfly.b32 %0, %1, %2, %3;" : "=r"(ret.w.y) : "r"(var.w.y), "r"(srcLane), "r"(c));
+	return ret;
+}
+
+
+static __device__ __forceinline__ ulonglong4 shuffle_down4(ulonglong4 var, int lane, int width)
+{
+	ulonglong4 res;
+	res.x = __shfl_down(var.x, lane, width);
+	res.y = __shfl_down(var.y, lane, width);
+	res.z = __shfl_down(var.z, lane, width);
+	res.w = __shfl_down(var.w, lane, width);
+	return res;
+}
+
+static __device__ __forceinline__ ulonglong4 shuffle_xor4(ulonglong4 var, int lane, int width)
+{
+	ulonglong4 res;
+	res.x = __shfl_xor(var.x, lane, width);
+	res.y = __shfl_xor(var.y, lane, width);
+	res.z = __shfl_xor(var.z, lane, width);
+	res.w = __shfl_xor(var.w, lane, width);
+	return res;
+}
+
+
+static __device__ __forceinline__ ulonglong4 shuffle_up4(ulonglong4 var, int lane, int width)
+{
+	ulonglong4 res;
+	res.x = __shfl_up(var.x, lane, width);
+	res.y = __shfl_up(var.y, lane, width);
+	res.z = __shfl_up(var.z, lane, width);
+	res.w = __shfl_up(var.w, lane, width);
+	return res;
+}
+
+
+static __device__ __forceinline__ uint2 shuffle2(const uint2 var, int lane, int width)
+{
+	uint2 res;
+	res.x = __shfl(var.x, lane, width);
+	res.y = __shfl(var.y, lane, width);
+	return res;
+}
+static __device__ __forceinline__ uint64_t shuffle2(const uint64_t var, int lane, int width)
+{
+	uint64_t res;
+	res = __shfl(var, lane, width);
+	return res;
+}
+
+static __device__ __forceinline__ uint64_t shuffle2t(const uint64_t var, int lane, int width)
+{
+	uint64_t res;
+	res = __shfl(var, lane, width);
+	return res;
+}
+static __device__ __forceinline__ uint32_t shuffle2t(const uint2 var, int lane, int width)
+{
+	uint32_t res;
+	res = __shfl(var.x, lane, width);
+	return res;
+}
+
+
+
+
+static __device__ __inline__ ulonglong4 __ldg4t(const ulonglong4 *ptr)
+{
+	ulonglong4 ret;
+	asm("ld.global.nc.v2.u64 {%0,%1}, [%2];"  : "=l"(ret.x), "=l"(ret.y) : __LDG_PTR(ptr));
+	asm("ld.global.nc.u64 {%0}, [%1+16];"  : "=l"(ret.z) : __LDG_PTR(ptr));
+	return ret;
+}
+
+static __device__ __inline__ uint28 __ldg4t(const uint28 *ptr)
+{
+	uint28 ret;
+	asm("ld.global.nc.v4.u32 {%0,%1,%2,%3}, [%4];"  : "=r"(ret.x.x), "=r"(ret.x.y), "=r"(ret.y.x), "=r"(ret.y.y) : __LDG_PTR(ptr));
+	asm("ld.global.nc.v2.u32 {%0,%1}, [%2+16];" : "=r"(ret.z.x), "=r"(ret.z.y) : __LDG_PTR(ptr));
+
+	return ret;
 }
 
 #endif // #ifndef CUDA_LYRA_VECTOR_H

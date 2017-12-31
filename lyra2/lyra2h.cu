@@ -22,13 +22,13 @@ extern void keccak256_cpu_free(int thr_id);
 extern void skein256_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNonce, uint64_t *d_outputHash, int order);
 extern void skein256_cpu_init(int thr_id, uint32_t threads);
 
-extern void lyra2Z_cpu_init(int thr_id, uint32_t threads, uint64_t *d_matrix);
-extern void lyra2Z_cpu_init_sm35(int thr_id, uint32_t threads, uint64_t *d_matrix);
-extern void lyra2Z_cpu_init_sm2(int thr_id, uint32_t threads);
-extern uint32_t lyra2Z_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNonce, uint64_t *d_outputHash, bool gtx750ti);
+extern void lyra2h_cpu_init(int thr_id, uint32_t threads, uint64_t *d_matrix);
+extern void lyra2h_cpu_init_sm35(int thr_id, uint32_t threads, uint64_t *d_matrix);
+extern void lyra2h_cpu_init_sm2(int thr_id, uint32_t threads);
+extern uint32_t lyra2h_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNonce, uint64_t *d_outputHash, bool gtx750ti);
 
-extern void lyra2Z_setTarget(const void *ptarget);
-extern uint32_t lyra2Z_getSecNonce(int thr_id, int num);
+extern void lyra2h_setTarget(const void *ptarget);
+extern uint32_t lyra2h_getSecNonce(int thr_id, int num);
 
 #ifdef _DEBUG
 #define TRACE(algo) { \
@@ -45,7 +45,7 @@ extern uint32_t lyra2Z_getSecNonce(int thr_id, int num);
 #define TRACE(algo) {}
 #endif
 
-extern "C" void lyra2Z_hash(void *state, const void *input)
+extern "C" void lyra2h_hash(void *state, const void *input)
 {
 	uint32_t hashA[8], hashB[8];
 
@@ -56,7 +56,7 @@ extern "C" void lyra2Z_hash(void *state, const void *input)
 	sph_blake256(&ctx_blake, input, 80);
 	sph_blake256_close(&ctx_blake, hashA);
  
-	LYRA2(hashB, 32, hashA, 32, hashA, 32, 8, 8, 8);
+	LYRA2(hashB, 32, hashA, 32, hashA, 32, 16, 16, 16);
  
 	memcpy(state, hashB, 32);
 }
@@ -64,7 +64,7 @@ extern "C" void lyra2Z_hash(void *state, const void *input)
 static bool init[MAX_GPUS] = { 0 };
 static __thread uint32_t throughput = 0;
 
-extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce, unsigned long *hashes_done)
+extern "C" int scanhash_lyra2h(int thr_id, struct work* work, uint32_t max_nonce, unsigned long *hashes_done)
 {
 	uint32_t *pdata = work->data;
 	uint32_t *ptarget = work->target;
@@ -96,25 +96,23 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 		gpulog(LOG_INFO, thr_id, "Intensity set to %g, %u cuda threads", throughput2intensity(throughput), throughput);
 
 		blake256_cpu_init(thr_id, throughput);
-		
-
+/*
 		if (device_sm[dev_id] >= 500)
 		{
-
-			size_t matrix_sz = device_sm[dev_id] > 500 ? sizeof(uint64_t) * 4 * 4 : sizeof(uint64_t) * 8 * 8 * 3 * 4;
+			size_t matrix_sz = device_sm[dev_id] > 500 ? sizeof(uint64_t) * 8 * 8: sizeof(uint64_t) * 16 * 16 * 3 * 4;
 			CUDA_SAFE_CALL(cudaMalloc(&d_matrix[thr_id], matrix_sz * throughput));
-			lyra2Z_cpu_init(thr_id, throughput, d_matrix[thr_id]);
+			lyra2h_cpu_init(thr_id, throughput, d_matrix[thr_id]);
 		}
-		else if (device_sm[dev_id] == 350 || device_sm[dev_id] == 370) {
-
+		else  if (device_sm[dev_id] == 350 || device_sm[dev_id] == 370) {
+*/
 			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-			size_t matrix_sz =  sizeof(uint64_t) * 8 * 8 * 16;
+			size_t matrix_sz = sizeof(uint64_t) * 16 * 16 * 16;
 			CUDA_SAFE_CALL(cudaMalloc(&d_matrix[thr_id], matrix_sz * throughput));
-			lyra2Z_cpu_init_sm35(thr_id, throughput, d_matrix[thr_id]);
+			lyra2h_cpu_init_sm35(thr_id, throughput, d_matrix[thr_id]);
+/*
 		}
-		else 
-			lyra2Z_cpu_init_sm2(thr_id, throughput);
- 
+			lyra2h_cpu_init_sm2(thr_id, throughput);
+ */
 
 		CUDA_SAFE_CALL(cudaMalloc(&d_hash[thr_id], (size_t)32 * throughput));
 
@@ -126,7 +124,7 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 		be32enc(&endiandata[k], pdata[k]);
 
 	blake256_cpu_setBlock_80(pdata);
-	lyra2Z_setTarget(ptarget);
+	lyra2h_setTarget(ptarget);
 
 	do {
 		int order = 0;
@@ -136,25 +134,25 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 
 		*hashes_done = pdata[19] - first_nonce + throughput;
 
-		foundNonce = lyra2Z_cpu_hash_32(thr_id, throughput, pdata[19], d_hash[thr_id], gtx750ti); 
+		foundNonce = lyra2h_cpu_hash_32(thr_id, throughput, pdata[19], d_hash[thr_id], gtx750ti); 
 
 		if (foundNonce != UINT32_MAX)
 		{
 			uint32_t _ALIGN(64) vhash64[8];
 
 			be32enc(&endiandata[19], foundNonce); 
-			lyra2Z_hash(vhash64, endiandata);  
+			lyra2h_hash(vhash64, endiandata);  
 
-			if (vhash64[7] <= ptarget[7] /*&& fulltest(vhash64, ptarget)*/) {
+			if (vhash64[7] <= ptarget[7] && fulltest(vhash64, ptarget)) {
 				int res = 1;
 			
-				uint32_t secNonce = lyra2Z_getSecNonce(thr_id, 1);
+				uint32_t secNonce = lyra2h_getSecNonce(thr_id, 1);
 				work_set_target_ratio(work, vhash64);
 				if (secNonce != UINT32_MAX)
 				{
 					be32enc(&endiandata[19], secNonce);
-					lyra2Z_hash(vhash64, endiandata);
-					if (vhash64[7] <= ptarget[7] /*&& fulltest(vhash64, ptarget)*/) {
+					lyra2h_hash(vhash64, endiandata);
+					if (vhash64[7] <= ptarget[7] && fulltest(vhash64, ptarget)) {
 						if (opt_debug)
 							gpulog(LOG_BLUE, thr_id, "found second nonce %08x", secNonce);
 						if (bn_hash_target_ratio(vhash64, ptarget) > work->shareratio[0])
@@ -184,7 +182,7 @@ extern "C" int scanhash_lyra2Z(int thr_id, struct work* work, uint32_t max_nonce
 }
 
 // cleanup
-extern "C" void free_lyra2Z(int thr_id)
+extern "C" void free_lyra2h(int thr_id)
 {
 	if (!init[thr_id])
 		return;

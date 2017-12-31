@@ -234,6 +234,7 @@ Options:\n\
 			lyra2       CryptoCoin\n\
 			lyra2v2     VertCoin\n\
 			lyra2Z      ZCoin\n\
+			lyra2h      HPP coin\n\
 			m7          m7 (crytonite) hash\n\
 			mjollnir    Mjollnircoin\n\
 			myr-gr      Myriad-Groestl\n\
@@ -1639,6 +1640,7 @@ static bool stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 		case ALGO_LBRY:
 		case ALGO_LYRA2Z:
 		case ALGO_LYRA2v2:
+		case ALGO_LYRA2H:
 			work_set_target(work, sctx->job.diff / (256.0 * opt_difficulty));
 			break;
 		case ALGO_KECCAK:
@@ -2116,6 +2118,7 @@ static void *miner_thread(void *userdata)
 			case ALGO_HEAVY:
 			case ALGO_LYRA2v2:
 			case ALGO_LYRA2Z:
+			case ALGO_LYRA2H:
 			case ALGO_S3:
 			case ALGO_X11EVO:
 			case ALGO_X11:
@@ -2256,6 +2259,9 @@ static void *miner_thread(void *userdata)
 			break;
 		case ALGO_LYRA2Z:
 			rc = scanhash_lyra2Z(thr_id, &work, max_nonce, &hashes_done);
+			break;
+		case ALGO_LYRA2H:
+			rc = scanhash_lyra2h(thr_id, &work, max_nonce, &hashes_done);
 			break;
 		case ALGO_LYRA2v2:
 			rc = scanhash_lyra2v2(thr_id, &work, max_nonce, &hashes_done);
@@ -3590,7 +3596,7 @@ int main(int argc, char *argv[])
 		CUDART_VERSION/1000, (CUDART_VERSION % 1000)/10);
 	printf("  Originally based on Christian Buchner and Christian H. project based on tpruvot 1.8.4 release\n");
 	printf("  Include algos from alexis78, djm34, sp, tsiv and klausT.\n");
-	printf("  *** News (02/08/2017): lyra2Z algo for ZCoin \n\n");
+	printf("  *** News (28/12/2017): lyra2h algo for HPP coin \n\n");
 	printf("BTC donation address: 1NENYmxwZGHsKFmyjTc5WferTn5VTFb7Ze (djm34)\n");
 	printf("ZCoin donation address: aChWVb8CpgajadpLmiwDZvZaKizQgHxfh5 (djm34)\n\n");
 

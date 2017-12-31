@@ -5,7 +5,10 @@
 #endif
 
 #include "cuda_helper.h"
+
+#define TPB50 8
 #include "cuda_lyra2_vectors.h"
+
 #if __CUDA_ARCH__ == 350 || __CUDA_ARCH__ == 370
 #define memshift 4
 #else
@@ -31,12 +34,12 @@
 #define vectype uint28
 #define vectype uint28
 #define u64type uint2
-//#define memshift 3   
-//#define __ldg4t(x) (*x)
+
 
 __device__  uint2 *DMatrix;
 __device__ vectype *DMatrix35;
 #define TPB50 32
+
 static __device__ __forceinline__ void Gfunc(uint2 & a, uint2 &b, uint2 &c, uint2 &d)
 {
 	a += b; d ^= a; d = SWAPUINT2(d);
@@ -127,14 +130,14 @@ static __device__ __forceinline__ void round_lyra_v35_ws(vectype &s)
 
 }
 
+
+
 //#if __CUDA_ARCH__ == 500 || __CUDA_ARCH__ == 350
+//#include "cuda_lyra2_vectors.h"
 
-
-#define Nrow 8
-#define Ncol 8
+#define Nrow 16
+#define Ncol 16
 //#define memshift 3
-
-#define BUF_COUNT 0
 
 
 
@@ -225,7 +228,7 @@ __device__ __forceinline__ void ST4S(const int row, const int col, const uint2 d
 {
 
 	extern __shared__ uint2 shared_mem[];
-	const int s0 = (Ncol * row  + col) * memshift;
+	const int s0 = (Ncol * row + col) * memshift;
 #pragma unroll
 	for (int j = 0; j < 3; j++)
 		shared_mem[((s0 + j) * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x] = data[j];
@@ -235,8 +238,8 @@ __device__ __forceinline__ void ST4S(const int row, const int col, const uint2 d
 __device__ __forceinline__ void LD4S2(uint2 res[3], const int row, const int col, const int thread, const int threads, const uint2 * __restrict__ shared_mem)
 {
 
-//	extern __shared__ uint2 shared_mem[];
-	const int s0 = (Ncol * row  + col) * memshift;
+	//	extern __shared__ uint2 shared_mem[];
+	const int s0 = (Ncol * row + col) * memshift;
 
 #pragma unroll
 	for (int j = 0; j < 3; j++)
@@ -247,7 +250,7 @@ __device__ __forceinline__ void LD4S2(uint2 res[3], const int row, const int col
 __device__ __forceinline__ void ST4S2(const int row, const int col, const uint2 data[3], const int thread, const int threads, uint2 * __restrict__ shared_mem)
 {
 
-//	extern __shared__ uint2 shared_mem[];
+	//	extern __shared__ uint2 shared_mem[];
 	const int s0 = (Ncol * row + col) * memshift;
 #pragma unroll
 	for (int j = 0; j < 3; j++)
@@ -276,8 +279,6 @@ __device__ __forceinline__ void LD4S(uint2 res[3], const int row, const int col,
 
 }
 
-
-
 __device__ __forceinline__ uint2 LD4S(const int index)
 {
 	extern __shared__ uint2 shared_mem[];
@@ -291,8 +292,6 @@ __device__ __forceinline__ void ST4S(const int index, const uint2 data)
 
 	shared_mem[(index * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x] = data;
 }
-
-
 
 __device__ __forceinline__ void round_lyra(uint2 s[4])
 {
@@ -315,9 +314,12 @@ void round_lyra(uint2x4* s)
 	Gfunc(s[0].w, s[1].x, s[2].y, s[3].z);
 }
 
+
 static __device__ __forceinline__
-void reduceDuplex(uint2 state[4], uint32_t thread, const uint32_t threads, uint2 * __restrict__ shared_mem)
+void reduceDuplexh2(uint2 state[4], uint32_t thread, const uint32_t threads)
 {
+#define Nrow 16
+#define Ncol 16
 	uint2 state1[3];
 
 #if __CUDA_ARCH__ > 500
@@ -325,15 +327,15 @@ void reduceDuplex(uint2 state[4], uint32_t thread, const uint32_t threads, uint2
 #endif
 	for (int i = 0; i < Nrow; i++)
 	{
-		ST4S2(0, Ncol - i - 1, state, thread, threads,shared_mem);
+		ST4S(0, Ncol - i - 1, state, thread, threads);
 
 		round_lyra(state);
 	}
 
-#pragma unroll 
+#pragma unroll 16
 	for (int i = 0; i < Nrow; i++)
 	{
-		LD4S2(state1, 0, i, thread, threads, shared_mem);
+		LD4S(state1, 0, i, thread, threads);
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j];
 
@@ -341,20 +343,21 @@ void reduceDuplex(uint2 state[4], uint32_t thread, const uint32_t threads, uint2
 
 		for (int j = 0; j < 3; j++)
 			state1[j] ^= state[j];
-		ST4S2(1, Ncol - i - 1, state1, thread, threads, shared_mem);
+		ST4S(1, Ncol - i - 1, state1, thread, threads);
 	}
 }
 
 static __device__ __forceinline__
-void reduceDuplexRowSetup(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], uint32_t thread, const uint32_t threads, uint2 * __restrict__ shared_mem)
+void reduceDuplexRowSetuph2(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], uint32_t thread, const uint32_t threads)
 {
 	uint2 state1[3], state2[3];
-
+#define Nrow 16
+#define Ncol 16
 #pragma unroll 1
 	for (int i = 0; i < Nrow; i++)
 	{
-		LD4S2(state1, rowIn, i, thread, threads, shared_mem);
-		LD4S2(state2, rowInOut, i, thread, threads, shared_mem);
+		LD4S(state1, rowIn, i, thread, threads);
+		LD4S(state2, rowInOut, i, thread, threads);
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j] + state2[j];
 
@@ -364,7 +367,7 @@ void reduceDuplexRowSetup(const int rowIn, const int rowInOut, const int rowOut,
 		for (int j = 0; j < 3; j++)
 			state1[j] ^= state[j];
 
-		ST4S2(rowOut, Ncol - i - 1, state1, thread, threads, shared_mem);
+		ST4S(rowOut, Ncol - i - 1, state1, thread, threads);
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -384,19 +387,21 @@ void reduceDuplexRowSetup(const int rowIn, const int rowInOut, const int rowOut,
 			state2[2] ^= Data2;
 		}
 
-		ST4S2(rowInOut, i, state2, thread, threads, shared_mem);
+		ST4S(rowInOut, i, state2, thread, threads);
 	}
 }
 
 static __device__ __forceinline__
-void reduceDuplexRowt(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], const uint32_t thread, const uint32_t threads, uint2 * __restrict__ shared_mem)
+void reduceDuplexRowth2(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
 {
+#define Nrow 16
+#define Ncol 16
 	for (int i = 0; i < Nrow; i++)
 	{
 		uint2 state1[3], state2[3];
 
-		LD4S2(state1, rowIn, i, thread, threads, shared_mem);
-		LD4S2(state2, rowInOut, i, thread, threads, shared_mem);
+		LD4S(state1, rowIn, i, thread, threads);
+		LD4S(state2, rowInOut, i, thread, threads);
 
 #pragma unroll
 		for (int j = 0; j < 3; j++)
@@ -423,26 +428,27 @@ void reduceDuplexRowt(const int rowIn, const int rowInOut, const int rowOut, uin
 			state2[2] ^= Data2;
 		}
 
-		ST4S2(rowInOut, i, state2, thread, threads, shared_mem);
+		ST4S(rowInOut, i, state2, thread, threads);
 
-		LD4S2(state1, rowOut, i, thread, threads, shared_mem);
+		LD4S(state1, rowOut, i, thread, threads);
 
 #pragma unroll
 		for (int j = 0; j < 3; j++)
 			state1[j] ^= state[j];
 
-		ST4S2(rowOut, i, state1, thread, threads, shared_mem);
+		ST4S(rowOut, i, state1, thread, threads);
 	}
 }
 
-
 static __device__ __forceinline__
-void reduceDuplexRowt_8(const int rowInOut, uint2* state, const uint32_t thread, const uint32_t threads, uint2 * __restrict__ shared_mem)
+void reduceDuplexRowt_8(const int rowInOut, uint2* state, const uint32_t thread, const uint32_t threads)
 {
+#define Nrow 16
+#define Ncol 16
 	uint2 state1[3], state2[3], last[3];
 
-	LD4S2(state1, 2, 0, thread, threads, shared_mem);
-	LD4S2(last, rowInOut, 0, thread, threads, shared_mem);
+	LD4S(state1, 2, 0, thread, threads);
+	LD4S(last, rowInOut, 0, thread, threads);
 
 #pragma unroll
 	for (int j = 0; j < 3; j++)
@@ -477,8 +483,8 @@ void reduceDuplexRowt_8(const int rowInOut, uint2* state, const uint32_t thread,
 
 	for (int i = 1; i < Nrow; i++)
 	{
-		LD4S2(state1, 2, i, thread, threads, shared_mem);
-		LD4S2(state2, rowInOut, i, thread, threads, shared_mem);
+		LD4S(state1, 2, i, thread, threads);
+		LD4S(state2, rowInOut, i, thread, threads);
 
 #pragma unroll
 		for (int j = 0; j < 3; j++)
@@ -494,12 +500,14 @@ void reduceDuplexRowt_8(const int rowInOut, uint2* state, const uint32_t thread,
 
 
 static __device__ __forceinline__
-void reduceDuplexRowt_8_v2(const int rowIn, const int rowOut, const int rowInOut, uint2* state, const uint32_t thread, const uint32_t threads, uint2 * __restrict__ shared_mem)
+void reduceDuplexRowt_8_v2h(const int rowIn, const int rowOut, const int rowInOut, uint2* state, const uint32_t thread, const uint32_t threads)
 {
+#define Nrow 16
+#define Ncol 16
 	uint2 state1[3], state2[3], last[3];
 
-	LD4S2(state1, rowIn, 0, thread, threads, shared_mem);
-	LD4S2(last, rowInOut, 0, thread, threads, shared_mem);
+	LD4S(state1, rowIn, 0, thread, threads);
+	LD4S(last, rowInOut, 0, thread, threads);
 
 #pragma unroll
 	for (int j = 0; j < 3; j++)
@@ -534,8 +542,8 @@ void reduceDuplexRowt_8_v2(const int rowIn, const int rowOut, const int rowInOut
 
 	for (int i = 1; i < Nrow; i++)
 	{
-		LD4S2(state1, rowIn, i, thread, threads, shared_mem);
-		LD4S2(state2, rowInOut, i, thread, threads, shared_mem);
+		LD4S(state1, rowIn, i, thread, threads);
+		LD4S(state2, rowInOut, i, thread, threads);
 
 #pragma unroll
 		for (int j = 0; j < 3; j++)
@@ -551,8 +559,10 @@ void reduceDuplexRowt_8_v2(const int rowIn, const int rowOut, const int rowInOut
 
 
 
+
+
 static __device__ __forceinline__
-void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t threads)
+void reduceDuplexV5h(uint2 state[4], const uint32_t thread, const uint32_t threads)
 {
 	uint2 state1[3], state2[3];
 
@@ -564,8 +574,16 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 	const uint32_t ps5 = (memshift * Ncol * 5 * threads + thread)*blockDim.x + threadIdx.x;
 	const uint32_t ps6 = (memshift * Ncol * 6 * threads + thread)*blockDim.x + threadIdx.x;
 	const uint32_t ps7 = (memshift * Ncol * 7 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps8 = (memshift * Ncol * 8 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps9 = (memshift * Ncol * 9 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps10 = (memshift * Ncol * 10 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps11 = (memshift * Ncol * 11 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps12 = (memshift * Ncol * 12 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps13 = (memshift * Ncol * 13 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps14 = (memshift * Ncol * 14 * threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps15 = (memshift * Ncol * 15 * threads + thread)*blockDim.x + threadIdx.x;
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s0 = memshift * Ncol * 0 + (Ncol - 1 - i) * memshift;
 		#pragma unroll
@@ -574,10 +592,10 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 		round_lyra(state);
 	}
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s0 = memshift * Ncol * 0 + i * memshift;
-		const uint32_t s1 = ps1 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s1 = ps1 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state1[j] = LD4S(s0 + j);
@@ -589,18 +607,18 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s1 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s1 + j*threads*blockDim.x) = state1[j] ^ state[j];
 	}
 
 	// 1, 0, 2
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s0 = memshift * Ncol * 0 + i * memshift;
 		const uint32_t s1 = ps1 + i * memshift* threads*blockDim.x;
-		const uint32_t s2 = ps2 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s2 = ps2 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s1 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s1 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state2[j] = LD4S(s0 + j);
@@ -612,7 +630,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s2 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s2 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -639,17 +657,17 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 	}
 
 	// 2, 1, 3
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s1 = ps1 + i * memshift* threads*blockDim.x;
 		const uint32_t s2 = ps2 + i * memshift* threads*blockDim.x;
-		const uint32_t s3 = ps3 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s3 = ps3 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s2 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state2[j] = *(uint2*)(DMatrix + s1 + j*threads*blockDim.x);
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j] + state2[j];
@@ -658,7 +676,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -679,19 +697,19 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
 	}
 
 	// 3, 0, 4
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t ls0 = memshift * Ncol * 0 + i * memshift;
 		const uint32_t s0 = ps0 + i * memshift* threads*blockDim.x;
 		const uint32_t s3 = ps3 + i * memshift* threads*blockDim.x;
-		const uint32_t s4 = ps4 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s4 = ps4 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s3 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s3 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state2[j] = LD4S(ls0 + j);
@@ -703,7 +721,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s4 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s4 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -724,21 +742,21 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s0 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s0 + j*threads*blockDim.x) = state2[j];
 	}
 
 	// 4, 3, 5
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s3 = ps3 + i * memshift* threads*blockDim.x;
 		const uint32_t s4 = ps4 + i * memshift* threads*blockDim.x;
-		const uint32_t s5 = ps5 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s5 = ps5 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s4 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s4 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state2[j] = *(uint2*)(DMatrix + s3 + j*threads*blockDim.x);
+			state2[j] = *(DMatrix + s3 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j] + state2[j];
@@ -747,7 +765,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s5 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s5 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -770,21 +788,21 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s3 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s3 + j*threads*blockDim.x) = state2[j];
 	}
 
 	// 5, 2, 6
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s2 = ps2 + i * memshift* threads*blockDim.x;
 		const uint32_t s5 = ps5 + i * memshift* threads*blockDim.x;
-		const uint32_t s6 = ps6 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s6 = ps6 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s5 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s5 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state2[j] = *(uint2*)(DMatrix + s2 + j*threads*blockDim.x);
+			state2[j] = *(DMatrix + s2 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j] + state2[j];
@@ -793,7 +811,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s6 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s6 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -816,21 +834,21 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s2 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s2 + j*threads*blockDim.x) = state2[j];
 	}
 
 	// 6, 1, 7
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		const uint32_t s1 = ps1 + i * memshift* threads*blockDim.x;
 		const uint32_t s6 = ps6 + i * memshift* threads*blockDim.x;
-		const uint32_t s7 = ps7 + (7 - i)*memshift* threads*blockDim.x;
+		const uint32_t s7 = ps7 + (15 - i)*memshift* threads*blockDim.x;
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state1[j] = *(uint2*)(DMatrix + s6 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s6 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state2[j] = *(uint2*)(DMatrix + s1 + j*threads*blockDim.x);
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 			state[j] ^= state1[j] + state2[j];
@@ -839,7 +857,7 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s7 + j*threads*blockDim.x) = state1[j] ^ state[j];
+			*(DMatrix + s7 + j*threads*blockDim.x) = state1[j] ^ state[j];
 
 		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
 		uint2 Data0 = state[0];
@@ -860,19 +878,381 @@ void reduceDuplexV5(uint2 state[4], const uint32_t thread, const uint32_t thread
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			*(uint2*)(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
 	}
+
+	// 7, 0, 8
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t ls0 = memshift * Ncol * 0 + i * memshift;
+		const uint32_t s0 = ps0 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps7 + i * memshift* threads*blockDim.x;
+		const uint32_t s4 = ps8 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s3 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = LD4S(ls0 + j);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s4 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s0 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 8, 3, 9
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps3 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps8 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps9 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+	// 9, 6, 10
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps6 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps9 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps10 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 10, 1, 11
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps1 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps10 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps11 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 11, 4, 12
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps4 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps11 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps12 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 12, 7, 13
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps7 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps12 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps13 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 13, 2, 14
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps2 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps13 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps14 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+	// 14, 5, 15
+	for (int i = 0; i < 16; i++)
+	{
+		const uint32_t s1 = ps5 + i * memshift* threads*blockDim.x;
+		const uint32_t s2 = ps14 + i * memshift* threads*blockDim.x;
+		const uint32_t s3 = ps15 + (15 - i)*memshift* threads*blockDim.x;
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state1[j] = *(DMatrix + s2 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state2[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			state[j] ^= state1[j] + state2[j];
+
+		round_lyra(state);
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s3 + j*threads*blockDim.x) = state1[j] ^ state[j];
+
+		//一個手前のスレッドからデータを貰う(同時に一個先のスレッドにデータを送る)
+		uint2 Data0 = state[0];
+		uint2 Data1 = state[1];
+		uint2 Data2 = state[2];
+		WarpShuffle3(Data0, Data1, Data2, threadIdx.x - 1, threadIdx.x - 1, threadIdx.x - 1, 4);
+
+		if (threadIdx.x == 0)
+		{
+			state2[0] ^= Data2;
+			state2[1] ^= Data0;
+			state2[2] ^= Data1;
+		}
+		else {
+			state2[0] ^= Data0;
+			state2[1] ^= Data1;
+			state2[2] ^= Data2;
+		}
+
+#pragma unroll
+		for (int j = 0; j < 3; j++)
+			*(DMatrix + s1 + j*threads*blockDim.x) = state2[j];
+	}
+
+
 }
 
 static __device__ __forceinline__
-void reduceDuplexRowV50(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
+void reduceDuplexRowV50h(const int rowIn, const int rowInOut, const int rowOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
 {
-	const uint32_t ps1 = (memshift * Ncol * rowIn	 * threads + thread) * blockDim.x + threadIdx.x;
-	const uint32_t ps2 = (memshift * Ncol * rowInOut * threads + thread) * blockDim.x + threadIdx.x;
-	const uint32_t ps3 = (memshift * Ncol * rowOut	 * threads + thread) * blockDim.x + threadIdx.x;
+	const uint32_t ps1 = (memshift * Ncol * rowIn*threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps2 = (memshift * Ncol * rowInOut *threads + thread)*blockDim.x + threadIdx.x;
+	const uint32_t ps3 = (memshift * Ncol * rowOut*threads + thread)*blockDim.x + threadIdx.x;
 
 	#pragma unroll 1
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 	{
 		uint2 state1[3], state2[3];
 
@@ -882,8 +1262,8 @@ void reduceDuplexRowV50(const int rowIn, const int rowInOut, const int rowOut, u
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++) {
-			state1[j] = *(uint2*)(DMatrix + s1 + j*threads*blockDim.x);
-			state2[j] = *(uint2*)(DMatrix + s2 + j*threads*blockDim.x);
+			state1[j] = *(DMatrix + s1 + j*threads*blockDim.x);
+			state2[j] = *(DMatrix + s2 + j*threads*blockDim.x);
 		}
 
 		#pragma unroll
@@ -914,14 +1294,14 @@ void reduceDuplexRowV50(const int rowIn, const int rowInOut, const int rowOut, u
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
 		{
-			*(uint2*)(DMatrix + s2 + j*threads*blockDim.x) = state2[j];
-			*(uint2*)(DMatrix + s3 + j*threads*blockDim.x) ^= state[j];
+			*(DMatrix + s2 + j*threads*blockDim.x) = state2[j];
+			*(DMatrix + s3 + j*threads*blockDim.x) ^= state[j];
 		}
 	}
 }
 
 static __device__ __forceinline__
-void reduceDuplexRowV50_8(const int rowInOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
+void reduceDuplexRowV50_8h(const int rowInOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
 {
 	const uint32_t ps1 = (memshift * Ncol * 2*threads + thread)*blockDim.x + threadIdx.x;
 	const uint32_t ps2 = (memshift * Ncol * rowInOut *threads + thread)*blockDim.x + threadIdx.x;
@@ -931,8 +1311,8 @@ void reduceDuplexRowV50_8(const int rowInOut, uint2 state[4], const uint32_t thr
 
 	#pragma unroll
 	for (int j = 0; j < 3; j++) {
-		state1[j] = *(uint2*)(DMatrix + ps1 + j*threads*blockDim.x);
-		last[j] = *(uint2*)(DMatrix + ps2 + j*threads*blockDim.x);
+		state1[j] = *(DMatrix + ps1 + j*threads*blockDim.x);
+		last[j] = *(DMatrix + ps2 + j*threads*blockDim.x);
 	}
 
 	#pragma unroll
@@ -967,14 +1347,14 @@ void reduceDuplexRowV50_8(const int rowInOut, uint2 state[4], const uint32_t thr
 			last[j] ^= state[j];
 	}
 
-	for (int i = 1; i < 8; i++)
+	for (int i = 1; i < 16; i++)
 	{
 		const uint32_t s1 = ps1 + i*memshift*threads *blockDim.x;
 		const uint32_t s2 = ps2 + i*memshift*threads *blockDim.x;
 
 		#pragma unroll
 		for (int j = 0; j < 3; j++)
-			state[j] ^= *(uint2*)(DMatrix + s1 + j*threads*blockDim.x) + *(uint2*)(DMatrix + s2 + j*threads*blockDim.x);
+			state[j] ^= *(DMatrix + s1 + j*threads*blockDim.x) + *(DMatrix + s2 + j*threads*blockDim.x);
 
 		round_lyra(state);
 	}
@@ -988,7 +1368,7 @@ void reduceDuplexRowV50_8(const int rowInOut, uint2 state[4], const uint32_t thr
 
 
 static __device__ __forceinline__
-void reduceDuplexRowV50_8_v2(const int rowIn, const int rowOut,const int rowInOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
+void reduceDuplexRowV50_8_v2h(const int rowIn, const int rowOut,const int rowInOut, uint2 state[4], const uint32_t thread, const uint32_t threads)
 {
 	const uint32_t ps1 = (memshift * Ncol * rowIn * threads + thread)*blockDim.x + threadIdx.x;
 	const uint32_t ps2 = (memshift * Ncol * rowInOut *threads + thread)*blockDim.x + threadIdx.x;
@@ -998,8 +1378,8 @@ void reduceDuplexRowV50_8_v2(const int rowIn, const int rowOut,const int rowInOu
 
 #pragma unroll
 	for (int j = 0; j < 3; j++) {
-		state1[j] = *(uint2*)(DMatrix + ps1 + j*threads*blockDim.x);
-		last[j] = *(uint2*)(DMatrix + ps2 + j*threads*blockDim.x);
+		state1[j] = *(DMatrix + ps1 + j*threads*blockDim.x);
+		last[j] = *(DMatrix + ps2 + j*threads*blockDim.x);
 	}
 
 #pragma unroll
@@ -1035,14 +1415,14 @@ void reduceDuplexRowV50_8_v2(const int rowIn, const int rowOut,const int rowInOu
 			last[j] ^= state[j];
 	}
 
-	for (int i = 1; i < 8; i++)
+	for (int i = 1; i < 16; i++)
 	{
 		const uint32_t s1 = ps1 + i*memshift*threads *blockDim.x;
 		const uint32_t s2 = ps2 + i*memshift*threads *blockDim.x;
 
 #pragma unroll
 		for (int j = 0; j < 3; j++)
-			state[j] ^= *(uint2*)(DMatrix + s1 + j*threads*blockDim.x) + *(uint2*)(DMatrix + s2 + j*threads*blockDim.x);
+			state[j] ^= *(DMatrix + s1 + j*threads*blockDim.x) + *(DMatrix + s2 + j*threads*blockDim.x);
 
 		round_lyra(state);
 	}
@@ -1053,6 +1433,7 @@ void reduceDuplexRowV50_8_v2(const int rowIn, const int rowOut,const int rowInOu
 		state[j] ^= last[j];
 
 }
+
 ////////////////////// sm5+ kernels ////////
 
 __device__ __forceinline__ void reduceDuplexRowSetupV2_ws(const int rowIn, const int rowInOut, const int rowOut, vectype state[4], uint32_t thread, uint32_t thread2)
@@ -1203,15 +1584,15 @@ __device__ __forceinline__ void reduceDuplexRowtV2_ws(const int rowIn, int rowIn
 	for (int j = 0; j < 3; j++)
 		state1[j] = ((vectype*)(DMatrix35))[j + s1];
 
-if( s1!=s2) {
+	if (s1 != s2) {
 #pragma unroll
-	for (int j = 0; j < 3; j++)
-		state2[j] = ((vectype*)(DMatrix35))[j + s2];
-}
-else {
-	for (int j = 0; j < 3; j++)
-		state2[j] = state1[j];
-}
+		for (int j = 0; j < 3; j++)
+			state2[j] = ((vectype*)(DMatrix35))[j + s2];
+	}
+	else {
+		for (int j = 0; j < 3; j++)
+			state2[j] = state1[j];
+	}
 
 #pragma unroll
 	for (int j = 0; j < 3; j++)
@@ -1318,7 +1699,7 @@ static __device__ __forceinline__ void reduceDuplexV3(ulonglong4 state[4], uint3
 }
 
 
-static __device__ __forceinline__ 
+static __device__ __forceinline__
 void reduceDuplexRowSetupV3(const int rowIn, const int rowInOut, const int rowOut, ulonglong4 state[4], uint32_t thread)
 {
 
@@ -1342,12 +1723,12 @@ void reduceDuplexRowSetupV3(const int rowIn, const int rowInOut, const int rowOu
 
 		for (int j = 0; j < 3; j++)
 			state1[j] = __ldg4(&((ulonglong4*)(DMatrix35))[j + s1]);
-if (s1!=s2)
-		for (int j = 0; j < 3; j++)
-			state2[j] = __ldg4(&((ulonglong4*)(DMatrix35))[j + s2]);
-else 
-		for (int j = 0; j < 3; j++)
-			state2[j] = state1[j];
+		if (s1 != s2)
+			for (int j = 0; j < 3; j++)
+				state2[j] = __ldg4(&((ulonglong4*)(DMatrix35))[j + s2]);
+		else
+			for (int j = 0; j < 3; j++)
+				state2[j] = state1[j];
 
 		for (int j = 0; j < 3; j++) {
 			ulonglong4 tmp = state1[j] + state2[j];
@@ -1376,7 +1757,7 @@ else
 
 }
 
-static __device__ __forceinline__ 
+static __device__ __forceinline__
 void reduceDuplexRowtV3(const int rowIn, const int rowInOut, const int rowOut, ulonglong4* state, uint32_t thread)
 {
 
@@ -1396,13 +1777,13 @@ void reduceDuplexRowtV3(const int rowIn, const int rowInOut, const int rowOut, u
 		for (int j = 0; j < 3; j++)
 			state1[j] = __ldg4(&((ulonglong4*)(DMatrix35))[j + s1]);
 
-//if (s1!=s2)
+		//if (s1!=s2)
 		for (int j = 0; j < 3; j++)
 			state2[j] = __ldg4(&((ulonglong4*)(DMatrix35))[j + s2]);
-/*else
+		/*else
 		for (int j = 0; j < 3; j++)
-			state2[j] = state1[j];
-*/
+		state2[j] = state1[j];
+		*/
 		for (int j = 0; j < 3; j++)
 			state1[j] += state2[j];
 
@@ -1424,7 +1805,8 @@ void reduceDuplexRowtV3(const int rowIn, const int rowInOut, const int rowOut, u
 			for (int j = 0; j < 3; j++)
 				((ulonglong4*)(DMatrix35))[j + s3] ^= state[j];
 
-		} else {
+		}
+		else {
 
 			for (int j = 0; j < 3; j++)
 				state2[j] ^= state[j];
@@ -1486,7 +1868,7 @@ static __device__ __forceinline__ void reduceDuplexRowSetup_ws2_pass1(const int 
 		uint32_t s3 = ps3 - i*memshift;
 
 
-		state1 = temp[7 - i];
+		state1 = temp[Ncol - 1 - i];
 		state2 = __ldg4t(&(DMatrix35 + s2)[laneId]);
 
 		vectype tmp = state1 + state2;
@@ -1501,7 +1883,7 @@ static __device__ __forceinline__ void reduceDuplexRowSetup_ws2_pass1(const int 
 
 		state1 ^= state;
 		(DMatrix35 + s3)[laneId] = state1;
-		temp[7 - i] = state1;
+		temp[Ncol - 1 - i] = state1;
 
 		rstate.x = shuffle2(state.x, laneId - 1, 4);
 		rstate.y = shuffle2(state.y, laneId - 1, 4);
@@ -1589,7 +1971,7 @@ static __device__ __forceinline__ void reduceDuplexRow_ws2(const int rowIn, cons
 		uint32_t s2 = ps2 + i*memshift;
 		uint32_t s3 = ps3 + i*memshift;
 
-		state1 = temp[7 - i];
+		state1 = temp[Ncol - 1 - i];
 
 		if (rowIn != rowInOut)
 			state2 = __ldg4t(&(DMatrix35 + s2)[laneId]);
@@ -1623,15 +2005,15 @@ static __device__ __forceinline__ void reduceDuplexRow_ws2(const int rowIn, cons
 		if (rowInOut != rowOut) {
 
 			(DMatrix35 + s2)[laneId] = state2;
-			temp[7 - i] = __ldg4t(&(DMatrix35 + s3)[laneId]);
-			temp[7 - i] ^= state;
-			(DMatrix35 + s3)[laneId] = temp[7 - i];
+			temp[Ncol - 1 - i] = __ldg4t(&(DMatrix35 + s3)[laneId]);
+			temp[Ncol - 1 - i] ^= state;
+			(DMatrix35 + s3)[laneId] = temp[Ncol - 1 - i];
 
 		}
 		else {
 
 			state2 ^= state;
-			temp[7 - i] = state2;
+			temp[Ncol - 1 - i] = state2;
 			(DMatrix35 + s2)[laneId] = state2;
 		}
 
@@ -1653,7 +2035,7 @@ static __device__ __forceinline__ void reduceDuplexRow_ws2_v2(const int rowIn, c
 		uint32_t s2 = ps2 + i*memshift;
 		uint32_t s3 = ps3 + i*memshift;
 
-		state1 = temp[7 - i];
+		state1 = temp[Ncol - 1 - i];
 
 		if (rowIn != rowInOut)
 			state2 = __ldg4t(&(DMatrix35 + s2)[laneId]);
@@ -1670,39 +2052,42 @@ static __device__ __forceinline__ void reduceDuplexRow_ws2_v2(const int rowIn, c
 
 		round_lyra_v35_ws(state);
 
-if (i==0) {
+		if (i == 0) {
 
-		rstate.x = shuffle2(state.x, laneId - 1, 4);
-		rstate.y = shuffle2(state.y, laneId - 1, 4);
-		rstate.z = shuffle2(state.z, laneId - 1, 4);
+			rstate.x = shuffle2(state.x, laneId - 1, 4);
+			rstate.y = shuffle2(state.y, laneId - 1, 4);
+			rstate.z = shuffle2(state.z, laneId - 1, 4);
 
-		if (laneId == 0)
-		{
-			u64type tmp = rstate.z;
-			rstate.z = rstate.y;
-			rstate.y = rstate.x;
-			rstate.x = tmp;
+			if (laneId == 0)
+			{
+				u64type tmp = rstate.z;
+				rstate.z = rstate.y;
+				rstate.y = rstate.x;
+				rstate.x = tmp;
+			}
+			state2 ^= rstate;
+
+
+			if (rowInOut != rowOut) {
+				temp[Ncol - 1 - i] = state2;
+				/*
+				(DMatrix35 + s2)[laneId] = state2;
+				temp[7 - i] = __ldg4t(&(DMatrix35 + s3)[laneId]);
+				temp[7 - i] ^= state;
+				(DMatrix35 + s3)[laneId] = temp[7 - i];
+				*/
+			}
+			else {
+
+				state2 ^= state;
+				temp[Ncol - 1 - i] = state2;
+				//			(DMatrix35 + s2)[laneId] = state2;
+			}
+
 		}
-		state2 ^= rstate;
-
-
-		if (rowInOut != rowOut) {
-			temp[7 - i] = state2;
-/*
-			(DMatrix35 + s2)[laneId] = state2;
-			temp[7 - i] = __ldg4t(&(DMatrix35 + s3)[laneId]);
-			temp[7 - i] ^= state;
-			(DMatrix35 + s3)[laneId] = temp[7 - i];
-*/
-		}
-		else {
-
-			state2 ^= state;
-			temp[7 - i] = state2;
-//			(DMatrix35 + s2)[laneId] = state2;
-		}
-
 	}
-	}
-//	temp[0] = __ldg4t(&(DMatrix35 + ps2)[laneId]);
+	//	temp[0] = __ldg4t(&(DMatrix35 + ps2)[laneId]);
 }
+
+
+

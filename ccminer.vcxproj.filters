@@ -497,6 +497,9 @@
     <ClInclude Include="sph\sph_tiger.h">
       <Filter>Header Files\sph</Filter>
     </ClInclude>
+    <ClInclude Include="lyra2\cuda_lyra2h_sm5.cuh">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda.cpp">
@@ -807,6 +810,12 @@
     </CudaCompile>
     <CudaCompile Include="m7\m7_whirlpool512.cu">
       <Filter>Source Files\CUDA\m7</Filter>
+    </CudaCompile>
+    <CudaCompile Include="lyra2\cuda_lyra2h.cu">
+      <Filter>Source Files\CUDA\lyra2</Filter>
+    </CudaCompile>
+    <CudaCompile Include="lyra2\lyra2h.cu">
+      <Filter>Source Files\CUDA\lyra2</Filter>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>

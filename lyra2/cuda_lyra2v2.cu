@@ -14,7 +14,7 @@
 #define __CUDA_ARCH__ 500
 #endif
 
-#define TPB 32
+#define TPB 4
 
 #if __CUDA_ARCH__ >= 500
 
@@ -37,12 +37,12 @@ __device__ __forceinline__ void ST4S(const int index, const uint2 data)
 	extern __shared__ uint2 shared_mem[];
 	shared_mem[(index * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x] = data;
 }
-
+/*
 __device__ __forceinline__ uint2 shuffle2(uint2 a, uint32_t b, uint32_t c)
 {
 	return make_uint2(__shfl(a.x, b, c), __shfl(a.y, b, c));
 }
-
+*/
 __device__ __forceinline__
 void Gfunc_v5(uint2 &a, uint2 &b, uint2 &c, uint2 &d)
 {
